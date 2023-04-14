@@ -1,0 +1,21 @@
+{
+    "name": "a-songac/php-utils",
+    "description": "Some utils built along the way",
+    "type": "library",
+    "require": {
+        "guzzlehttp/guzzle": "^7.5",
+        "nesbot/carbon": "^2.66"
+    },
+    "license": "MIT License",
+    "autoload": {
+        "psr-4": {
+            "ASongac\\PhpUtils\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Arnaud Songa-Cote",
+            "email": "arnaud@nabupro.com"
+        }
+    ]
+}
