@@ -33,4 +33,67 @@ class GuzzleMiddleware {
             );
     }
 
+    // TODO
+    public static function reauthenticate(
+        ClientRepo $repo,
+        ClientAuthService $authService,
+        LogService $logger,
+    ): \Closure {
+        $maxRetries = 1;
+        return function (callable $handler) use ($repo, $authService, $maxRetries, $logger) {
+            return function (
+                RequestInterface $request,
+                array $options
+            ) use (
+                $repo,
+                $authService,
+                $handler,
+                $logger,
+                $maxRetries
+            ) {
+                return $handler($request, $options)->then(
+                    function (ResponseInterface $response) use (
+                        $repo,
+                        $authService,
+                        $request,
+                        $handler,
+                        $options,
+                        $logger,
+                        $maxRetries
+                    ) {
+                        if (ApiUtils::isNabuproApiInvalidToken($request, $response)) {
+                            $logger->debug('reauthenticate', 'Invalid nabupro token');
+                            if (!isset($options['reauth'])) {
+                                $options['reauth'] = 0;
+                            }
+                            if ($options['reauth'] < $maxRetries) {
+                                $options['reauth']++;
+
+                                $logger->debug('reauthenticate', 'Reauthenticate client');
+
+                                $client = $repo->find((int) $request->getHeader('clientId')[0]);
+                                $authService->authenticate($client);
+
+                                $request = $request->withHeader(
+                                    'Authorization',
+                                    $client->getApiClientToken()
+                                );
+
+                                $logger->debug('reauthenticate', 'Reauthenticate completed, resend request');
+
+                                return $handler($request, $options);
+                            }
+                        }
+
+                        $logger->debug('reauthenticate', 'Valid token, process request');
+
+                        $response->getBody()->rewind();
+                        return $response;
+                    }
+                );
+            };
+        };
+    }
+
+
 }
